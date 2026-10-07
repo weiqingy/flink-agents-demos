@@ -29,8 +29,8 @@ job's memory is Flink keyed state, checkpointed with the stream.
 | 1 | The runbook | The Flink docs, with the four stateful phrases highlighted | — |
 | 2 | The agent is a Flink job | Its job graph: Kafka → 15 s windows → persistence filter → agent at parallelism 4. A funnel: ~3,500 metric samples → <30 windows → 5 LLM calls | real |
 | 3 | The page | `ClickstreamEnrichment` is backpressured: one TaskManager runs 4 tasks at 100% CPU, another runs 2. The agent waits for 3 skewed windows, then writes a baseline into memory | real |
-| 4 | The fix, verified | The LLM picks `APPLY_TASKS`. The agent redeploys the cluster with TASKS balancing (savepoint → new config → restore), tasks even out to 3/3/3, and after a cooldown it verifies: ~7.5k → 9.5k records/s, backpressure gone → **KEEP**. Same 3 machines | real |
-| 5 | When the fix doesn't hold | Fleet job `payments-sessionizer`: TASKS is already on, but the skew returns after failovers. The agent raises the interval 20 → 70 → 120 → 170 ms, then a guardrail in code stops it and it **ESCALATES** with a report built from memory | **simulated** (labeled on screen) |
+| 4 | The fix, verified | The LLM picks `APPLY_TASKS`. The agent redeploys the cluster with `taskmanager.load-balance.mode: TASKS` (savepoint → new config → restore), tasks even out to 3/3/3, and after a cooldown it verifies: ~7.5k → 9.5k records/s, backpressure gone → **KEEP**. Same 3 machines | real |
+| 5 | When the fix doesn't hold | Fleet job `payments-sessionizer`: TASKS is already on, but the skew returns after failovers. The agent raises `slot.request.max-interval` 20 → 70 → 120 → 170 ms, then a guardrail in code stops it and it **ESCALATES** with a report built from memory | **simulated** (labeled on screen) |
 | 6 | Break the agent | `kill -9` on the agent's TaskManager while a redeploy is in flight. Flink restores the agent from its checkpoint; the agent finds its in-flight request instead of resending it (**redeploys: 1**), and its memory is intact | real |
 | 7 | Close | KEPT 1 · REVERTED 0 · ESCALATED 1 | — |
 
@@ -70,9 +70,14 @@ Kafka ops_records → dashboard
 **The target** (`target-cluster/`, `target-jobs/`)
 - A Docker Flink 2.2.1 session cluster: 1 JobManager, 3 TaskManagers × 2 slots, `TM_CPUS` each (default 0.5).
 - `ClickstreamEnrichment`: Enrich (p=6) → keyBy → SessionScore (p=3), both CPU-heavy, fed 9,500 events/s.
-  The default scheduler (`NONE`) places it 4/3/2, which can't keep up; `TASKS` places it 3/3/3, which can.
-- Both settings are cluster-level, so the fix is a redeploy from a savepoint. In production this would be a
-  Kubernetes operator spec change.
+- The fix is one line of Flink configuration:
+  ```yaml
+  taskmanager.load-balance.mode: TASKS   # default NONE; Flink 2.2+
+  ```
+  With `NONE` the job's tasks land 4/3/2 on the TaskManagers and it can't keep up; with `TASKS` they land
+  3/3/3 and it can. The runbook's next knob is `slot.request.max-interval` (default 20 ms).
+- Both are cluster-level settings (see `target-cluster/docker-compose.yml`), so the fix is a redeploy from a
+  savepoint. In production this would be a Kubernetes operator spec change.
 
 ## Run it
 Requirements: macOS or Linux, Docker, [Ollama](https://ollama.com), Python 3.10–3.12, JDK 17, Maven, git,
