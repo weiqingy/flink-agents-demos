@@ -25,7 +25,7 @@ Silence is planned. Scenes 3–6 are about half narration: let the audience watc
 ---
 
 ## Hand-in
-Mayank (end of slide 9): *"Weiqing, show them what a Flink job on call looks like."*
+Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call looks like."*
 
 ## Slide 10: setup (0:30)
 **Proposed new slide text.** The current slide describes the old demo: vector store, four sample jobs, DashScope→Bedrock prep.
@@ -38,7 +38,7 @@ Mayank (end of slide 9): *"Weiqing, show them what a Flink job on call looks lik
 - Footer: EVERY RUN ENDS ONE WAY: KEPT · REVERTED · ESCALATED TO A PERSON
 
 **Say:**
-> Thanks, Mayank. This is a recording, so I'll narrate.
+> Thanks. This is a recording, so I'll narrate.
 > The agent is a Flink job, watching other Flink jobs. It isn't answering a question. It's following a runbook that takes several tries, so it has to remember what it did.
 > Watch for three things: it waits, it experiments, and it knows when to stop.
 

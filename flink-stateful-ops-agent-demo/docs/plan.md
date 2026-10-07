@@ -6,7 +6,7 @@ start with the [README](../README.md).
 ## Decisions (2026-10-02)
 - Direction: build a new stateful tuning demo around the balanced-scheduling runbook. The original `flink-operations-agent-demo` stays untouched.
 - Demo format (2026-10-03): a **pre-recorded video** (7:00, slide 11), not a live demo. No venue network, latency or live-failure risk. Real waits (windows, redeploys, cooldowns) are time-lapsed in editing with an on-screen wall clock. Presenter narrates live over the muted video from `docs/demo-script.md`, so it can be rehearsed.
-- LLM (2026-10-03): record with **Ollama qwen3:8b**. It is verified 21/21 and needs no account, so anyone can reproduce the video from the public repo. Bedrock is an optional upgrade if Mayank (AWS) provides an account, and it doesn't block anything.
+- LLM (2026-10-03): record with **Ollama qwen3:8b**. It is verified 21/21 and needs no account, so anyone can reproduce the video from the public repo. Bedrock is an optional upgrade if an AWS account is available, and it doesn't block anything.
 - Target cluster: Docker, with a JobManager and 3 TaskManagers. Each TaskManager is capped at `TM_CPUS` (default 0.5, also used for recording).
 - Target input (2026-10-03): rate-limited to `TARGET_RATE` (default 19000 × `TM_CPUS` = 9,500 events/s), between the skewed and the balanced capacity. The skewed placement falls behind and the balanced one keeps up, so the target Flink UI shows the fix as well as the dashboard.
 - flink-agents version: a local build of main + PR #1161, until a release contains the fix. Without it there's no "no double redeploy" beat (see P0 findings).
