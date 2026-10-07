@@ -1,6 +1,7 @@
 # Recording runbook
 
-How to record the muted demo video that `demo-script.md` narrates. Every command and
+How to record the muted demo video that `demo-script.md` narrates (for what the demo does, see the
+[README](../README.md)). Every command and
 timing below comes from verified rehearsal runs on an M3 Pro laptop with `TM_CPUS=0.5`
 (the default). Run all commands from `flink-agents-demos/flink-stateful-ops-agent-demo`.
 

@@ -1,13 +1,16 @@
 # Plan: new demo module `flink-stateful-ops-agent-demo` (re:Invent OPN303, slides 10–12)
 
+Design notes, decisions and spike findings from building the demo. For what the demo does and how to run it,
+start with the [README](../README.md).
+
 ## Decisions (2026-10-02)
 - Direction: build a new stateful tuning demo around the balanced-scheduling runbook. The original `flink-operations-agent-demo` stays untouched.
-- Demo format (2026-10-03): a **pre-recorded video** (7:00, slide 11), not a live demo. No venue network, latency or live-failure risk. Real waits (30s windows, redeploys, the ~65s meter lag) are time-lapsed in editing with an on-screen wall clock. Presenter narrates live over the muted video from `docs/demo-script.md`, so it can be rehearsed.
+- Demo format (2026-10-03): a **pre-recorded video** (7:00, slide 11), not a live demo. No venue network, latency or live-failure risk. Real waits (windows, redeploys, cooldowns) are time-lapsed in editing with an on-screen wall clock. Presenter narrates live over the muted video from `docs/demo-script.md`, so it can be rehearsed.
 - LLM (2026-10-03): record with **Ollama qwen3:8b**. It is verified 21/21 and needs no account, so anyone can reproduce the video from the public repo. Bedrock is an optional upgrade if Mayank (AWS) provides an account, and it doesn't block anything.
-- Target cluster: Docker, with a JobManager and 3 TaskManagers, each TaskManager limited to one CPU.
-- Current scope: P0 test, then the P1 skeleton, then check in.
+- Target cluster: Docker, with a JobManager and 3 TaskManagers. Each TaskManager is capped at `TM_CPUS` (default 0.5, also used for recording).
+- Target input (2026-10-03): rate-limited to `TARGET_RATE` (default 19000 × `TM_CPUS` = 9,500 events/s), between the skewed and the balanced capacity. The skewed placement falls behind and the balanced one keeps up, so the target Flink UI shows the fix as well as the dashboard.
 - flink-agents version: a local build of main + PR #1161, until a release contains the fix. Without it there's no "no double redeploy" beat (see P0 findings).
-- The hero job's live fix is NONE → TASKS on unbounded input. The "+50 ms" step stays on the simulated fleet job, because post-failover imbalance didn't reproduce on the hero job (see P0 findings: skew).
+- The hero job's live fix is NONE → TASKS. The "+50 ms" step stays on the simulated fleet job, because post-failover imbalance didn't reproduce on the hero job (see P0 findings: skew).
 
 ## Demo story
 1. **The page.** ClickstreamEnrichment is backpressured. "An autoscaler would buy more machines."
@@ -52,37 +55,33 @@ A stateless, request-driven agent needs an external DB, scheduler, queue and par
 - `slot.request.max-interval` default is 20 ms (2.2).
 - In a Flink 2.2 session cluster, both options are read from the **cluster** config. `JobMasterServiceLeadershipRunnerFactory` passes the cluster `configuration` into `DefaultSlotPoolServiceSchedulerFactory.fromConfiguration`, so a job-level `-D` is ignored. The remedy is to redeploy the target cluster from a savepoint (in production, a FlinkDeployment spec change).
 - Stack: Flink 2.2.1, apache-flink 2.2.1, flink-connector-kafka 5.0.0-2.2, flink-agents 0.4-SNAPSHOT built locally from main + PR #1161 (0.4 is not released; see P0 findings: durability).
-- Features to use (all are in 0.3.1; the durability fixes are not):
-  - short-term memory plus TTL (`short-term-memory.state-ttl.ms`)
-  - action state store (Kafka) plus `durable_execute`
-  - Skills (`@skills`, `Skills.from_local_dir`, `load_skill`)
-  - event log (SLF4J, shown in the Flink UI Logs tab, or file)
-  - built-in metrics
-  - `output_schema`
-  - async/parallel LLM
-  - MCP
-  - Bedrock chat model (Java, used cross-language; optional, needs AWS credentials)
+- Features to use (all are in 0.3.1; the durability fixes are not). Used in the demo: short-term memory,
+  the Kafka action state store with `durable_execute_async` and a reconciler, the runbook as a Skill file,
+  `output_schema`, and async actions. Considered but not used: memory TTL, MCP, Bedrock (optional, needs AWS
+  credentials), and model-driven `load_skill` (see P0 findings: LLM decisions).
 
 ## Architecture (a single Flink job; stream processing before reasoning)
 ```
-collector (REST poll, 5s) ─┐
-fleet simulator (N jobs) ──┴─> Kafka flink_metrics
-  -> keyBy(job_name) -> 30s windows -> features (TM task skew, hot-TM busy%, backpressure, throughput)
-  -> KeyedProcessFunction: emit only if the anomaly persists ≥3 windows, or for follow-up windows after an incident
-  -> Flink Agents agent (keyed by job_name, parallelism 4)
-       memory: baseline, experiments[], current_config, phase, cooldown
-       skill:  balanced-task-scheduling, loaded deterministically into every decision prompt
-       tools:  redeploy_with_config (side effect, durable), get_tm_load
-       guardrails in code: cooldown, max attempts, then escalate
-  -> Kafka operations_record -> audit console (normal / auto-remediated / manual)
+platform-sim collector (every 3s): real target job (Flink REST) + simulated fleet (21 jobs)
+  -> Kafka ops_metrics
+  -> parse -> keyBy(job) -> 15s event-time windows -> features (TM task skew, hot-TM CPU, backpressure, throughput)
+  -> persistence filter (KeyedProcessFunction): forwards skewed windows with their streak count, the first
+     healthy window after them, and 6 windows after every config change; drops the rest
+  -> OpsAgent (Flink Agents, keyed by job, parallelism 4)
+       memory:     incident (baseline, attempts with before/after, cooldown), escalation, history
+       runbook:    skills/balanced-task-scheduling/SKILL.md, loaded into every decision prompt
+       decisions:  Ollama qwen3:8b with output_schema (runbook_step, action, rationale)
+       guardrails: allowed_actions() per state, 30s cooldown before verify, ESCALATE forced after 3 increases
+       side effects (durable_execute_async + reconciler, via the platform-sim REST API): redeploy, escalate
+  -> Kafka ops_records -> platform-sim dashboard (http://localhost:8090)
 ```
-- Agent cluster: local Flink 2.2.1 standalone. It is never restarted by remediation.
-- Target cluster: docker compose with a JobManager and 3 TaskManagers (2 slots each, `cpus: 1`). The hero job has vertex A at p=6 and B at p=3, both CPU-heavy. The default strategy gives a 4/3/2 task skew, so the hot TaskManager backpressures.
+- Agent cluster: local Flink 2.2.1 standalone with 2 TaskManagers. It is never restarted by remediation.
+- Target cluster: docker compose with a JobManager and 3 TaskManagers (2 slots each, `TM_CPUS` each). The hero job has Enrich at p=6 and SessionScore at p=3, both CPU-heavy. The default strategy gives a 4/3/2 task skew, so the hot TaskManager backpressures.
 - Durability: checkpoint every 10s, fixed-delay restart, Kafka action state store.
 
 ## Phases (each ends with something that can be demoed)
 
-**Status (2026-10-03):** P0–P4 done and verified end to end on the laptop (`TM_CPUS=0.5`): hero fix with a real redeploy and KEEP, fleet escalation with the hands-off hold, and the agent TaskManager kill mid-redeploy (restarts 1, redeploys 1, reconciled). The target job's input is rate-limited to `TARGET_RATE` (19000 × `TM_CPUS` = 9,500 events/s): the skewed placement falls behind (~6.5–7.5k rec/s, backpressured, hot SessionScore 100% busy), the balanced one keeps up (9.5k, no backpressure, ~25–40% busy), so the Flink UI shows the fix too. P5 is next: record with `docs/recording-runbook.md`.
+**Status (2026-10-04):** P0–P4 done and verified end to end on the laptop (`TM_CPUS=0.5`, 9,500 events/s): the hero fix with a real redeploy and KEEP (~7.5k → 9.5k rec/s, backpressure gone), the fleet escalation with the hands-off hold, and the agent TaskManager kill mid-redeploy (restarts 1, redeploys 1, reconciled). P5 is next: record with `docs/recording-runbook.md`.
 
 - P0 spike, about 1 day. Verify on 2.2.1 + 0.3.1 Python:
   - short-term memory persists across runs and checkpoints
@@ -96,7 +95,7 @@ fleet simulator (N jobs) ──┴─> Kafka flink_metrics
   - checkpoints, restart strategy, Kafka action store
   - memory: baseline, actions, config, cooldown, windows with skew
   - the runbook loaded deterministically; `output_schema` decisions
-  - tools over `target_ctl`: redeploy (`durable_execute`), get_tm_load
+  - durable side effects (`durable_execute_async` + reconciler): redeploy, escalate
   - manual trigger, start/stop scripts, `setup_flink.sh` for the local build
 - P2: stream-first pipeline and fleet simulator (scale: N jobs, 4 subtasks, events→incidents→LLM-call counters).
 - P3: hero scenario:
@@ -179,7 +178,7 @@ Upstream status:
    - **use `mvn clean install` for the `dist/*` modules.** Without `clean`, maven-shade re-shades the previous jar and the stale runtime classes win.
 
 ## P0 findings (2026-10-02): skew and remediation
-Setup:
+Setup (measured at `cpus: 1` per TaskManager with unbounded input, before the demo moved to `TM_CPUS=0.5` and a rate-limited source):
 - Target cluster: `target-cluster/` (docker, 3 TaskManagers × 2 slots, `cpus: 1` each).
 - Hero job: `target-jobs/clickstream-enrichment` (Enrich p=6 → keyBy → SessionScore p=3, both CPU-heavy, unbounded datagen).
 - Control: `target-cluster/target_ctl.py`.
@@ -220,7 +219,7 @@ Spike: `spikes/llm_spike.py` covers 7 runbook scenarios (WAIT, APPLY_TASKS, KEEP
 - Event log: `baseLogDir` → `FileEventLogger` writes per-subtask JSONL. Strings are truncated at 2000 chars (`event-log.standard.max-string-length`).
 
 ## Local dev safety (the presenter's MacBook: M3 Pro, 12 cores, 36 GB)
-- Develop with `TM_CPUS=0.5`, so the target cluster is hard-capped at 1.5 cores (~12% of the machine). Use the full `TM_CPUS=1` only for recording takes.
+- Run with `TM_CPUS=0.5` (the default), so the target cluster is hard-capped at 1.5 cores (~12% of the machine). Record with it too: every timing in `docs/recording-runbook.md` was measured at 0.5.
 - Ollama runs only during decisions (~3s bursts).
-- Run `target_ctl.py down`, stop the agent cluster and stop Kafka whenever a test session ends.
+- Run `bin/demo.sh down --all` whenever a session ends.
 - Check `pmset -g therm` for thermal warnings during long runs.

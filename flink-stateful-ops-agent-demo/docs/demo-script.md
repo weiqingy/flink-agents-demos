@@ -1,5 +1,7 @@
 # Demo script: live narration over a muted video (OPN303, slides 10–12)
 
+New to the demo? Read the [README](../README.md) first for what it does and how it works.
+
 Status: numbers come from verified rehearsal takes (see `recording-runbook.md`). Re-check them against your final take; throughput varies a little from run to run. The script also serves as the shot list: each scene's **On screen** is what the recording must show.
 
 ## Timing budget (from the deck's speaker notes)
@@ -129,7 +131,7 @@ Replace the first line of slide 12's notes ("what you just saw is closest to pat
 
 ## Say it, don't show it (slide 12 or Q&A)
 - Scale: the agent is keyed by job name, so thousands of jobs spread across subtasks. Each key's actions stay in order, which is also what makes exactly-once actions possible after recovery.
-- Memory has a TTL, so a retired job's state expires on its own.
+- Memory can be given a TTL (one config option, `short-term-memory.state-ttl.ms`), so a retired job's state expires on its own.
 - In production the "redeploy" is a Kubernetes operator spec change, gated by approvals and blast-radius limits.
 - The model is a local open model (Ollama qwen3:8b); any supported provider, Bedrock included, is a config change.
 
