@@ -48,18 +48,19 @@ Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call loo
 *(Click: slide 11.)*
 
 ## Slide 11: architecture (0:30)
-**Slide text:** title "One Flink job, from metrics to action", with the diagram in [`stateful-ops-agent-architecture.drawio`](stateful-ops-agent-architecture.drawio) ([PNG](stateful-ops-agent-architecture.png)):
-- Watched jobs: the real ClickstreamEnrichment (Flink 2.2, 3 TaskManagers) and a simulated fleet of 21 jobs.
-- Agent, one Flink job: 15 s windows → persistence filter → ops agent, keyed by job, with its memory in Flink state.
-- Model (your choice of LLM) and runbook skill (Flink 2.2 balanced task scheduling).
-- Platform APIs, simulated: the Deployment API redeploys from a savepoint; the Escalation API files the FLINK-38715 report for the on-call engineer.
+**Slide text:** title "Where the operations agent fits", with the high-level diagram in [`ai-ops-architecture.drawio`](ai-ops-architecture.drawio) ([PNG](ai-ops-architecture.png)):
+- Flink platform: User API, REST API gateway, job metadata management, metrics management, automatic inspection, and the Platform API.
+- Flink workloads: the jobs users run, plus the Flink Operations Agent, which is a Flink job too. It does automatic problem recognition, intelligent root cause analysis, and automated repair.
+- Users submit and manage jobs through the User API. Inspection sends trigger events to the agent; the agent acts through the Platform API as tool calls.
+- The agent reads SOPs and runbooks and asks an LLM.
 
 **Say:**
-> The whole demo on one slide. Left: the jobs it watches, one real Flink 2.2 job and a simulated fleet, with metrics streaming in through Kafka.
-> Middle: the agent, one Flink job. Right: the runbook it follows and the model it asks. Any model works; swapping it is a config change.
-> Bottom: the only two things it can do to the world: redeploy a job, or hand off to a person.
+> Here's the shape of AI ops on a Flink platform. Users submit and manage jobs through the platform, and the platform already watches every job: metadata, metrics, automatic inspection.
+> When inspection spots a problem, it sends a trigger event to the operations agent, which is just another Flink job next to the workloads.
+> The agent follows the team's SOPs and runbooks, reasons with an LLM, and acts through the platform API: redeploy, reconfigure, or hand off to a person. Any model works; swapping it is a config change.
+> In the demo, the platform is simulated around one real Flink 2.2 job, so it fits in seven minutes.
 
-Scene 2 of the video covers the windows, the filter and keyed state, so leave them for there.
+Scene 2 of the video zooms into the demo itself (windows, the filter, keyed state), so leave those for there.
 
 *(Click: slide 12. The video starts.)*
 
@@ -82,7 +83,7 @@ Scene 2 of the video covers the windows, the filter and keyed state, so leave th
 > Every step depends on the one before. The runbook is stateful.
 
 ## Scene 2: the agent is a Flink job (0:45–1:30)
-**On screen:** *(optional)* a 3s recap of the slide 11 diagram ([`stateful-ops-agent-architecture.png`](stateful-ops-agent-architecture.png)), then the Flink UI job graph: Kafka source → windows → persistence filter → agent operator at parallelism 4. Then the dashboard's header counters: metric samples → windows to the agent → LLM calls → side effects (a hold frame from the end of take A works best here).
+**On screen:** *(optional)* a 3s shot of the detailed demo diagram ([`stateful-ops-agent-architecture.png`](stateful-ops-agent-architecture.png)), zooming in from slide 11's platform view, then the Flink UI job graph: Kafka source → windows → persistence filter → agent operator at parallelism 4. Then the dashboard's header counters: metric samples → windows to the agent → LLM calls → side effects (a hold frame from the end of take A works best here).
 **Cue:** the job graph appears.
 
 **Say:**
@@ -179,7 +180,7 @@ If 0.4 has shipped by the talk, say "shipped in 0.4" and change the tag to "NEW 
 ## Deck changes
 Done:
 - Slide 10: the new text (above) and notes; the vector-store, DashScope→Bedrock and manual-trigger prep are gone.
-- Slide 11: the architecture diagram, as editable shapes in the deck's style, from the same layout as the `.drawio` file. Notes match the narration above.
+- Slide 11: the high-level AI-ops diagram (from the team's platform sketch), as editable shapes in the deck's style, from the same layout as `ai-ops-architecture.drawio`. Notes match the narration above. Deck v4 had the detailed demo diagram here instead; it now lives in `stateful-ops-agent-architecture.drawio` for scene 2 and the README.
 - Slide 12: notes say to play the 7:00 video and narrate from this script.
 - Slide 13: the tie-back line (above) opens the notes.
 - Slide 14: roadmap refreshed against the 0.4 plan and open issues; notes list the sources.
