@@ -7,7 +7,7 @@ guide. It waits for evidence, runs an experiment, checks the result against a ba
 person when the fix doesn't hold. Every step it takes is kept in per-job Flink state, so the agent survives a
 crash without forgetting anything or repeating a side effect.
 
-This is the demo for the re:Invent 2026 talk OPN303 (slide 11). It is shown as a muted 7-minute recording,
+This is the demo for the re:Invent 2026 talk OPN303 (slides 10–14; the video is slide 12). It is shown as a muted 7-minute recording,
 narrated live from [`docs/demo-script.md`](docs/demo-script.md).
 
 ## Why the runbook needs memory

@@ -1,11 +1,11 @@
-# Plan: new demo module `flink-stateful-ops-agent-demo` (re:Invent OPN303, slides 10–12)
+# Plan: new demo module `flink-stateful-ops-agent-demo` (re:Invent OPN303, slides 10–14)
 
 Design notes, decisions and spike findings from building the demo. For what the demo does and how to run it,
 start with the [README](../README.md).
 
 ## Decisions (2026-10-02)
 - Direction: build a new stateful tuning demo around the balanced-scheduling runbook. The original `flink-operations-agent-demo` stays untouched.
-- Demo format (2026-10-03): a **pre-recorded video** (7:00, slide 11), not a live demo. No venue network, latency or live-failure risk. Real waits (windows, redeploys, cooldowns) are time-lapsed in editing with an on-screen wall clock. Presenter narrates live over the muted video from `docs/demo-script.md`, so it can be rehearsed.
+- Demo format (2026-10-03): a **pre-recorded video** (7:00, slide 12), not a live demo. No venue network, latency or live-failure risk. Real waits (windows, redeploys, cooldowns) are time-lapsed in editing with an on-screen wall clock. Presenter narrates live over the muted video from `docs/demo-script.md`, so it can be rehearsed.
 - LLM (2026-10-03): record with **Ollama qwen3:8b**. It is verified 21/21 and needs no account, so anyone can reproduce the video from the public repo. Bedrock is an optional upgrade if an AWS account is available, and it doesn't block anything.
 - Target cluster: Docker, with a JobManager and 3 TaskManagers. Each TaskManager is capped at `TM_CPUS` (default 0.5, also used for recording).
 - Target input (2026-10-03): rate-limited to `TARGET_RATE` (default 19000 × `TM_CPUS` = 9,500 events/s), between the skewed and the balanced capacity. The skewed placement falls behind and the balanced one keeps up, so the target Flink UI shows the fix as well as the dashboard.
@@ -20,7 +20,7 @@ start with the [README](../README.md).
    - It verifies against the baseline: balanced, throughput up, so KEEP. No new machines.
 3. **When the fix doesn't hold** (simulated fleet job): +50 ms, then +50 ms, then it stops and escalates with a report built from its own memory.
 4. **Chaos.** Kill the agent mid-action. It recovers from the checkpoint, doesn't redeploy twice, and still remembers.
-5. **Close:** "It didn't just answer. It remembered, experimented, and knew when to stop." Then on to slide 12.
+5. **Close:** "It didn't just answer. It remembered, experimented, and knew when to stop." Then on to slide 13.
 
 ## Q&A
 **Is the existing ops agent stateless?** Its reasoning is. It runs on a stateful engine but uses Flink only as a runner:
@@ -107,10 +107,10 @@ platform-sim collector (every 3s): real target job (Flink REST) + simulated flee
   - per-TaskManager CPU bars
   - scene trigger scripts
   - event log
-- P5: record and edit the demo video (the primary demo, slide 11). Shoot to `docs/demo-script.md`: its "On screen" lines are the shot list, with chapter cards and hold frames for live narration. Several takes per scene, time-lapse the waits, then a final cut. Hidden slide 18 is redundant.
+- P5: record and edit the demo video (the primary demo, slide 12). Shoot to `docs/demo-script.md`: its "On screen" lines are the shot list, with chapter cards and hold frames for live narration. Several takes per scene, time-lapse the waits, then a final cut. Hidden slide 19 is redundant.
 
 ## Demo video flow (7:00, muted, narrated live; full script in `docs/demo-script.md`)
-Talk clock: slide 10 setup 8:00–8:30, video 8:30–15:30, 0:30 slack, slide 12 at 16:00.
+Talk clock: slide 10 setup 7:30–8:00, slide 11 architecture 8:00–8:30, video (slide 12) 8:30–15:30, 0:30 slack, slide 13 at 16:00.
 
 | Video time | Beat |
 |---|---|
@@ -120,7 +120,7 @@ Talk clock: slide 10 setup 8:00–8:30, video 8:30–15:30, 0:30 slack, slide 12
 | 2:45 | Agent applies TASKS (durable side effect), the target redeploys from a savepoint, and the bars even out. Verified against the baseline, so KEEP |
 | 4:00 | Fleet job (simulated) where the fix doesn't hold: +50 ms per try until the limit, then escalate with a report built from memory |
 | 5:15 | Kill the agent's TaskManager mid-action: it recovers from the checkpoint, does not redeploy twice, and memory is intact |
-| 6:30 | Summary card, then click to slide 12 |
+| 6:30 | Summary card, then click to slide 13 |
 
 Say it rather than show it:
 - thousands of jobs through key partitioning

@@ -1,4 +1,4 @@
-# Demo script: live narration over a muted video (OPN303, slides 10–12)
+# Demo script: live narration over a muted video (OPN303, slides 10–14)
 
 New to the demo? Read the [README](../README.md) first for what it does and how it works.
 
@@ -7,10 +7,12 @@ Status: numbers come from verified rehearsal takes (see `recording-runbook.md`).
 ## Timing budget (from the deck's speaker notes)
 | Talk clock | Slide | Who | Length |
 |---|---|---|---|
-| 8:00 | 10: setup | Weiqing | 0:30 |
-| 8:30 | 11: demo video (muted) | Weiqing narrates | 7:00 |
+| 7:30 | 10: setup | Weiqing | 0:30 |
+| 8:00 | 11: architecture | Weiqing | 0:30 |
+| 8:30 | 12: demo video (muted) | Weiqing narrates | 7:00 |
 | 15:30 | slack (late start, a pause, a laugh) | | 0:30 |
-| 16:00 | 12: Agent ops patterns | Weiqing | 2:00 |
+| 16:00 | 13: patterns from production | Weiqing | 1:30 |
+| 17:30 | 14: roadmap | Weiqing or co-presenter | 1:00 |
 
 Pace: about 120 words per minute. Each scene's lines are shorter than the scene, so the video never has to wait for you. Lines marked *(optional)* are the first to drop if you fall behind.
 
@@ -28,7 +30,7 @@ Silence is planned. Scenes 3–6 are about half narration: let the audience watc
 Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call looks like."*
 
 ## Slide 10: setup (0:30)
-**Proposed new slide text.** The current slide describes the old demo: vector store, four sample jobs, DashScope→Bedrock prep.
+**Slide text:**
 - Title: Flink watching Flink
 - Subtitle: An operations agent, itself a Flink job, follows a stateful runbook for the jobs it watches.
 - 01 WAIT: Is it a real bottleneck, or a blip?
@@ -36,13 +38,34 @@ Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call loo
 - 03 REMEMBER: Every attempt lives in per-job Flink state.
 - 04 STOP: Keep, revert, or hand off with evidence.
 - Footer: EVERY RUN ENDS ONE WAY: KEPT · REVERTED · ESCALATED TO A PERSON
+- Right: FOR YOUR APP: Change the events, tools, and runbooks
 
 **Say:**
-> Thanks. This is a recording, so I'll narrate.
-> The agent is a Flink job, watching other Flink jobs. It isn't answering a question. It's following a runbook that takes several tries, so it has to remember what it did.
+> Thanks. The agent is a Flink job, watching other Flink jobs. It isn't answering a question. It's following a runbook that takes several tries, so it has to remember what it did.
 > Watch for three things: it waits, it experiments, and it knows when to stop.
+> *(optional)* For your own app, you'd change three things: the events, the tools, and the runbook.
 
-*(Click: start the video.)*
+*(Click: slide 11.)*
+
+## Slide 11: architecture (0:30)
+**Slide text:** title "One Flink job, from metrics to action", with the diagram in [`stateful-ops-agent-architecture.drawio`](stateful-ops-agent-architecture.drawio) ([PNG](stateful-ops-agent-architecture.png)):
+- Watched jobs: the real ClickstreamEnrichment (Flink 2.2, 3 TaskManagers) and a simulated fleet of 21 jobs.
+- Agent, one Flink job: 15 s windows → persistence filter → ops agent, keyed by job, with its memory in Flink state.
+- Model (qwen3:8b on Ollama) and runbook skill (Flink 2.2 balanced task scheduling).
+- Platform APIs, simulated: the Deployment API redeploys from a savepoint; the Escalation API files the FLINK-38715 report for the on-call engineer.
+
+**Say:**
+> The whole demo on one slide. Left: the jobs it watches, one real Flink 2.2 job and a simulated fleet, with metrics streaming in through Kafka.
+> Middle: the agent, one Flink job. Right: the runbook it follows and the model it asks.
+> Bottom: the only two things it can do to the world: redeploy a job, or hand off to a person.
+
+Scene 2 of the video covers the windows, the filter and keyed state, so leave them for there.
+
+*(Click: slide 12. The video starts.)*
+
+## Slide 12: the video (7:00)
+**Say, as the video starts:**
+> This is a recording, so I'll narrate.
 
 ---
 
@@ -59,11 +82,11 @@ Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call loo
 > Every step depends on the one before. The runbook is stateful.
 
 ## Scene 2: the agent is a Flink job (0:45–1:30)
-**On screen:** the architecture diagram (5s), then the Flink UI job graph: Kafka source → windows → persistence filter → agent operator at parallelism 4. Then the dashboard's header counters: metric samples → windows to the agent → LLM calls → side effects (a hold frame from the end of take A works best here).
+**On screen:** *(optional)* a 3s recap of the slide 11 diagram ([`stateful-ops-agent-architecture.png`](stateful-ops-agent-architecture.png)), then the Flink UI job graph: Kafka source → windows → persistence filter → agent operator at parallelism 4. Then the dashboard's header counters: metric samples → windows to the agent → LLM calls → side effects (a hold frame from the end of take A works best here).
 **Cue:** the job graph appears.
 
 **Say:**
-> Here's the agent: one Flink job. Metrics from every watched job stream in from Kafka, keyed by job name.
+> Here's that agent running: one Flink job. Metrics from every watched job stream in from Kafka, keyed by job name.
 > Windows and a filter run first, so the model only sees problems that persist. Look at the funnel: by the end of this run, about 3,500 metric samples, fewer than 30 windows reach the agent, and just 5 model calls. The last box, side effects, counts the real-world actions the agent took.
 > Then the agent operator, at parallelism four. Each job's memory is Flink keyed state, checkpointed with the stream.
 
@@ -121,15 +144,27 @@ Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call loo
 > So it didn't just answer. It waited for evidence, ran an experiment, remembered every step, survived a crash, and knew when to hand off to a person.
 > No external database, no scheduler, no queue. Just Flink state.
 
-*(Click: slide 12.)*
+*(Click: slide 13.)*
 
 ---
 
-## Bridge into slide 12
-Replace the first line of slide 12's notes ("what you just saw is closest to pattern one") with:
+## Slide 13: patterns from production (1:30)
+Open with the tie-back (it's also in slide 13's notes), then follow the notes for the three patterns:
 > That was one job and one runbook. You just saw all three patterns in miniature: the stream filtered before the model reasoned, each job's context lived in keyed state, and the guardrails were code. Here's how they look at LinkedIn scale.
 
-## Say it, don't show it (slide 12 or Q&A)
+## Slide 14: roadmap (1:00)
+**Slide text:** tag "IN 0.4 · TARGET OCT 2026", with the items checked against the 0.4 plan ([apache/flink-agents#862](https://github.com/apache/flink-agents/discussions/862)) and merged PRs:
+- In 0.4: sub-agents, callable as tools · multimodal input, structured output · per-run traces in the event log · parallel tool calls · API review toward stable APIs
+- Being discussed: HARNESS (cost budgets, run policies, safety hooks) · SQL (call agents from Flink SQL and CDC) · TRACING (OpenTelemetry GenAI export) · RUNTIME (live updates to prompts and MCP tools)
+
+**Say:**
+> The roadmap is set in the open. 0.4 is feature-frozen and due at the end of October: sub-agents you can call as tools, multimodal input and structured output, per-run traces, parallel tool calls, and an API review toward stable APIs.
+> The community is also discussing a harness for cost budgets and safety hooks, calling agents from Flink SQL, OpenTelemetry export, and live updates to prompts and MCP tools.
+> Those are community priorities, not release commitments.
+
+If 0.4 has shipped by the talk, say "shipped in 0.4" and change the tag to "NEW IN 0.4" on slides 9 and 14.
+
+## Say it, don't show it (slide 13 or Q&A)
 - Scale: the agent is keyed by job name, so thousands of jobs spread across subtasks. Each key's actions stay in order, which is also what makes exactly-once actions possible after recovery.
 - Memory can be given a TTL (one config option, `short-term-memory.state-ttl.ms`), so a retired job's state expires on its own.
 - In production the "redeploy" is a Kubernetes operator spec change, gated by approvals and blast-radius limits.
@@ -141,8 +176,14 @@ Replace the first line of slide 12's notes ("what you just saw is closest to pat
 - **Is the fleet job real?** The hero job is real Flink on a real cluster. The fleet job is simulated, because the post-failover imbalance it shows doesn't reproduce on demand. The video labels it.
 - **Which version?** flink-agents built from main plus the durable-execution reconciler fix (apache/flink-agents#1161), heading into 0.4, on Flink 2.2.
 
-## Deck changes this script needs
-- Slide 10: replace the text (above) and the notes (drop the vector-store, DashScope→Bedrock, and manual-trigger prep).
-- Slide 11: embed the muted video, starting on click. Notes: "[8:30–15:30] narrate from demo-script.md". Keep a local copy of the video file on the presenting laptop.
-- Slide 12: the new tie-back line (above).
-- Slide 18 (hidden backup): no longer needed, since the video is the demo.
+## Deck changes
+Done:
+- Slide 10: the new text (above) and notes; the vector-store, DashScope→Bedrock and manual-trigger prep are gone.
+- Slide 11: the architecture diagram, as editable shapes in the deck's style, from the same layout as the `.drawio` file. Notes match the narration above.
+- Slide 12: notes say to play the 7:00 video and narrate from this script.
+- Slide 13: the tie-back line (above) opens the notes.
+- Slide 14: roadmap refreshed against the 0.4 plan and open issues; notes list the sources.
+
+Still to do:
+- Slide 12: embed the muted video, starting on click. Keep a local copy of the video file on the presenting laptop.
+- Slide 19 (hidden backup): no longer needed, since the video is the demo.
