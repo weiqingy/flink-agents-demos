@@ -64,7 +64,7 @@ Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call loo
 
 **Say:**
 > Here's the agent: one Flink job. Metrics from every watched job stream in from Kafka, keyed by job name.
-> Windows and a filter run first, so the model only sees problems that persist. Look at the funnel: by the end of this run, about 3,500 metric samples, fewer than 30 windows reach the agent, and just 5 model calls.
+> Windows and a filter run first, so the model only sees problems that persist. Look at the funnel: by the end of this run, about 3,500 metric samples, fewer than 30 windows reach the agent, and just 5 model calls. The last box, side effects, counts the real-world actions the agent took.
 > Then the agent operator, at parallelism four. Each job's memory is Flink keyed state, checkpointed with the stream.
 
 ## Scene 3: the page, and the wait (1:30–2:45)
@@ -83,7 +83,7 @@ Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call loo
 
 **Say:**
 > The decision comes back structured: which runbook step, which action, and why.
-> The action: switch the cluster to TASKS load balancing. That's a redeploy, a real side effect, so it runs as a durable action, with a stable request ID and its result checkpointed with the agent's state.
+> The action: switch the cluster to TASKS load balancing. That's a redeploy, a side effect: a real-world action the agent takes. So it runs as a durable action, with a stable request ID and its result checkpointed with the agent's state.
 > The cluster restarts from a savepoint, and... three, three, three.
 > The agent checks against its own baseline: balanced, backpressure gone, and the job now keeps up with its full input. Decision: keep.
 > Same three machines. No new hardware.
