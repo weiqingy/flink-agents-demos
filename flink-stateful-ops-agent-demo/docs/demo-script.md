@@ -2,13 +2,15 @@
 
 New to the demo? Read the [README](../README.md) first for what it does and how it works.
 
+Matches deck v5, where slide 11 is the high-level AI-ops diagram and the video zooms into the demo from there.
+
 Status: numbers come from verified rehearsal takes (see `recording-runbook.md`). Re-check them against your final take; throughput varies a little from run to run. The script also serves as the shot list: each scene's **On screen** is what the recording must show.
 
 ## Timing budget (from the deck's speaker notes)
 | Talk clock | Slide | Who | Length |
 |---|---|---|---|
 | 7:30 | 10: setup | Weiqing | 0:30 |
-| 8:00 | 11: architecture | Weiqing | 0:30 |
+| 8:00 | 11: where the agent fits | Weiqing | 0:30 |
 | 8:30 | 12: demo video (muted) | Weiqing narrates | 7:00 |
 | 15:30 | slack (late start, a pause, a laugh) | | 0:30 |
 | 16:00 | 13: patterns from production | Weiqing | 1:30 |
@@ -47,20 +49,31 @@ Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call loo
 
 *(Click: slide 11.)*
 
-## Slide 11: architecture (0:30)
-**Slide text:** title "Where the operations agent fits", with the high-level diagram in [`ai-ops-architecture.drawio`](ai-ops-architecture.drawio) ([PNG](ai-ops-architecture.png)):
-- Flink platform: User API, REST API gateway, job metadata management, metrics management, automatic inspection, and the Platform API.
-- Flink workloads: the jobs users run, plus the Flink Operations Agent, which is a Flink job too. It does automatic problem recognition, intelligent root cause analysis, and automated repair.
-- Users submit and manage jobs through the User API. Inspection sends trigger events to the agent; the agent acts through the Platform API as tool calls.
-- The agent reads SOPs and runbooks and asks an LLM.
+## Slide 11: where the agent fits (0:30)
+**Slide text:** kicker "DEMO · ARCHITECTURE", title "Where the operations agent fits", with the diagram in [`ai-ops-architecture.drawio`](ai-ops-architecture.drawio) ([PNG](ai-ops-architecture.png)):
+- FLINK PLATFORM: User API (e.g., submit jobs) · REST API gateway · Job metadata management · Metrics management · Automatic inspection · Platform API
+- FLINK WORKLOADS: a grid of Flink jobs, and the Flink Operations Agent ("A FLINK JOB"): automatic problem recognition, intelligent root cause analysis, automated repair
+- Arrows: Users ↔ User API ("Submit and manage jobs") · Automatic inspection → agent ("trigger events") · agent → Platform API ("tool calls") · agent ↔ SOPs & runbooks · agent ↔ LLMs
 
 **Say:**
-> Here's the shape of AI ops on a Flink platform. Users submit and manage jobs through the platform, and the platform already watches every job: metadata, metrics, automatic inspection.
-> When inspection spots a problem, it sends a trigger event to the operations agent, which is just another Flink job next to the workloads.
-> The agent follows the team's SOPs and runbooks, reasons with an LLM, and acts through the platform API: redeploy, reconfigure, or hand off to a person. Any model works; swapping it is a config change.
-> In the demo, the platform is simulated around one real Flink 2.2 job, so it fits in seven minutes.
+> Here's AI ops on a Flink platform. Users manage jobs through the platform, and the platform already watches them: metadata, metrics, automatic inspection.
+> When inspection spots a problem, it sends a trigger event to the operations agent, which is just another Flink job.
+> The agent follows your SOPs and runbooks, asks an LLM of your choice, and acts through the platform API with tool calls.
+> *(optional)* In the demo, the platform is simulated around one real Flink 2.2 job.
 
-Scene 2 of the video zooms into the demo itself (windows, the filter, keyed state), so leave those for there.
+Slide 11's speaker notes match these lines, which fit the 0:30.
+
+**How the demo fills each box** (for you, not to say; scene 2 shows the inside of the agent):
+
+| Slide box | In the demo |
+|---|---|
+| Flink jobs | ClickstreamEnrichment, real Flink 2.2 on 3 TaskManagers, plus a simulated fleet of 21 jobs |
+| Metrics management | the platform sim samples each job's metrics (the real job via its cluster's REST API) into Kafka |
+| Automatic inspection → trigger events | runs inside the agent job: 15 s windows per job, then a persistence filter; only windows worth attention reach the agent |
+| SOPs & runbooks | one runbook, the Flink 2.2 balanced task scheduling docs (`skills/balanced-task-scheduling/SKILL.md`), read into the system prompt |
+| LLMs | any supported provider; the recording uses a local open model |
+| Platform API (tool calls) | simulated: the Deployment API redeploys from a savepoint; the Escalation API files the report for a person |
+| User API, REST gateway, job metadata | not shown; the demo's jobs are already running |
 
 *(Click: slide 12. The video starts.)*
 
@@ -88,7 +101,7 @@ Scene 2 of the video zooms into the demo itself (windows, the filter, keyed stat
 
 **Say:**
 > Here's that agent running: one Flink job. Metrics from every watched job stream in from Kafka, keyed by job name.
-> Windows and a filter run first, so the model only sees problems that persist. Look at the funnel: by the end of this run, about 3,500 metric samples, fewer than 30 windows reach the agent, and just 5 model calls. The last box, side effects, counts the real-world actions the agent took.
+> Windows and a filter run first. They're the inspection from the last slide, so the model only sees problems that persist. By the end of this run: about 3,500 metric samples, fewer than 30 windows, just 5 model calls. The last box, side effects, counts the real-world actions the agent took.
 > Then the agent operator, at parallelism four. Each job's memory is Flink keyed state, checkpointed with the stream.
 
 ## Scene 3: the page, and the wait (1:30–2:45)
@@ -107,7 +120,7 @@ Scene 2 of the video zooms into the demo itself (windows, the filter, keyed stat
 
 **Say:**
 > The decision comes back structured: which runbook step, which action, and why.
-> The action: switch the cluster to TASKS load balancing. That's a redeploy, a side effect: a real-world action the agent takes. So it runs as a durable action, with a stable request ID and its result checkpointed with the agent's state.
+> The action: switch the cluster to TASKS load balancing. That's a redeploy through the platform API, a side effect: a real-world action the agent takes. So it runs as a durable action, with a stable request ID and its result checkpointed with the agent's state.
 > The cluster restarts from a savepoint, and... three, three, three.
 > The agent checks against its own baseline: balanced, backpressure gone, and the job now keeps up with its full input. Decision: keep.
 > Same three machines. No new hardware.
@@ -169,16 +182,19 @@ If 0.4 has shipped by the talk, say "shipped in 0.4" and change the tag to "NEW 
 - Scale: the agent is keyed by job name, so thousands of jobs spread across subtasks. Each key's actions stay in order, which is also what makes exactly-once actions possible after recovery.
 - Memory can be given a TTL (one config option, `short-term-memory.state-ttl.ms`), so a retired job's state expires on its own.
 - In production the "redeploy" is a Kubernetes operator spec change, gated by approvals and blast-radius limits.
-- The model is a local open model (Ollama qwen3:8b); any supported provider, Bedrock included, is a config change.
+- The LLM is your choice. The recording uses a local open model (Ollama qwen3:8b), so anyone can rerun it without an account; any supported provider, Bedrock included, is a config change.
 
 ## Q&A prep
 - **Why not the autoscaler?** It's a fixed formula on one metric and one setting, parallelism. For skew it adds machines when the problem is placement. The agent follows a written runbook across several settings, runs an experiment, and escalates with evidence.
 - **Why not a regular agent framework?** It's request-driven: you'd add a database for memory, a scheduler to wait across windows, a queue and partitioner for many jobs, and idempotency for side effects. Here those are keyed state, windows, key partitioning, and durable execution in one job.
 - **Is the fleet job real?** The hero job is real Flink on a real cluster. The fleet job is simulated, because the post-failover imbalance it shows doesn't reproduce on demand. The video labels it.
+- **Is automatic inspection part of Flink Agents?** No, it's whatever already watches your jobs. In the demo it's plain Flink in front of the agent: windows and a persistence filter. The agent is the part that reasons and acts.
+- **Do the SOPs need a vector store?** Not for one runbook: the demo reads it into the prompt. With many SOPs you'd retrieve the right one; Flink Agents has vector store resources (Chroma, for example).
+- **What's the platform in production?** Your managed Flink service or Kubernetes operator. The agent only needs its APIs as tools. The demo simulates them around one real Flink 2.2 cluster.
 - **Which version?** flink-agents built from main plus the durable-execution reconciler fix (apache/flink-agents#1161), heading into 0.4, on Flink 2.2.
 
 ## Deck changes
-Done:
+Done (deck v5):
 - Slide 10: the new text (above) and notes; the vector-store, DashScope→Bedrock and manual-trigger prep are gone.
 - Slide 11: the high-level AI-ops diagram (from the team's platform sketch), as editable shapes in the deck's style, from the same layout as `ai-ops-architecture.drawio`. Notes match the narration above. Deck v4 had the detailed demo diagram here instead; it now lives in `stateful-ops-agent-architecture.drawio` for scene 2 and the README.
 - Slide 12: notes say to play the 7:00 video and narrate from this script.
