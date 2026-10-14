@@ -51,12 +51,12 @@ Co-presenter (end of slide 9): *"Weiqing, show them what a Flink job on call loo
 **Slide text:** title "One Flink job, from metrics to action", with the diagram in [`stateful-ops-agent-architecture.drawio`](stateful-ops-agent-architecture.drawio) ([PNG](stateful-ops-agent-architecture.png)):
 - Watched jobs: the real ClickstreamEnrichment (Flink 2.2, 3 TaskManagers) and a simulated fleet of 21 jobs.
 - Agent, one Flink job: 15 s windows → persistence filter → ops agent, keyed by job, with its memory in Flink state.
-- Model (qwen3:8b on Ollama) and runbook skill (Flink 2.2 balanced task scheduling).
+- Model (your choice of LLM) and runbook skill (Flink 2.2 balanced task scheduling).
 - Platform APIs, simulated: the Deployment API redeploys from a savepoint; the Escalation API files the FLINK-38715 report for the on-call engineer.
 
 **Say:**
 > The whole demo on one slide. Left: the jobs it watches, one real Flink 2.2 job and a simulated fleet, with metrics streaming in through Kafka.
-> Middle: the agent, one Flink job. Right: the runbook it follows and the model it asks.
+> Middle: the agent, one Flink job. Right: the runbook it follows and the model it asks. Any model works; swapping it is a config change.
 > Bottom: the only two things it can do to the world: redeploy a job, or hand off to a person.
 
 Scene 2 of the video covers the windows, the filter and keyed state, so leave them for there.
