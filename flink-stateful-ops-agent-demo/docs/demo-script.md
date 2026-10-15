@@ -164,7 +164,7 @@ Slide 11's speaker notes match these lines, which fit the 0:30.
 
 ## Slide 13: patterns from production (1:30)
 Open with the tie-back (it's also in slide 13's notes), then follow the notes for the three patterns:
-> That was one job and one runbook. You just saw all three patterns in miniature: the stream filtered before the model reasoned, each job's context lived in keyed state, and the guardrails were code. Here's how they look at LinkedIn scale.
+> That was one job and one runbook. You just saw all three patterns in miniature: the stream filtered before the model reasoned, each job's context lived in keyed state, and the guardrails were code. Here's how they look at production scale.
 
 ## Slide 14: roadmap (1:00)
 **Slide text:** tag "IN 0.4 · TARGET OCT 2026", with the items checked against the 0.4 plan ([apache/flink-agents#862](https://github.com/apache/flink-agents/discussions/862)) and merged PRs:
